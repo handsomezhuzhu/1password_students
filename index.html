@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1Password 学生优惠激活链接生成器</title>
+<meta name="description" content="粘贴 GitHub Student 授权后的跳转 URL，一键生成 1Password 学生优惠激活链接。">
+<style>
+  :root {
+    --bg: #0f172a;
+    --bg-soft: #1e293b;
+    --card: #1e293b;
+    --card-2: #273449;
+    --border: #334155;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --accent: #38bdf8;
+    --accent-2: #0ea5e9;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --err: #ef4444;
+    --code-bg: #0b1220;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1e3a5f 0%, transparent 60%), var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
+  header { text-align: center; margin-bottom: 28px; }
+  .logo {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 24px; font-weight: 700; letter-spacing: .3px;
+  }
+  .logo .badge {
+    background: linear-gradient(135deg, var(--accent), #6366f1);
+    width: 34px; height: 34px; border-radius: 9px;
+    display: grid; place-items: center; font-size: 18px;
+    box-shadow: 0 6px 20px rgba(56,189,248,.35);
+  }
+  .subtitle { color: var(--text-dim); font-size: 14px; margin-top: 6px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  }
+  label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+  .input-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  textarea {
+    width: 100%; min-height: 92px; resize: vertical;
+    background: var(--code-bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; font-size: 14px; font-family: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+    outline: none; transition: border .15s, box-shadow .15s;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,189,248,.18); }
+  button {
+    cursor: pointer; border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600; padding: 13px 22px;
+    transition: transform .05s, filter .15s, background .15s;
+  }
+  button:active { transform: translateY(1px); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #04121f; flex: 1; min-width: 160px;
+    box-shadow: 0 8px 22px rgba(14,165,233,.35);
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+  .btn-ghost {
+    background: var(--card-2); color: var(--text); border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { filter: brightness(1.15); }
+  .btn-copy {
+    background: var(--card-2); color: var(--text); border: 1px solid var(--border);
+    padding: 6px 12px; font-size: 12px; border-radius: 8px; font-weight: 500;
+  }
+  .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* steps */
+  .steps { display: flex; gap: 10px; margin: 22px 0 6px; flex-wrap: wrap; }
+  .step {
+    flex: 1; min-width: 150px;
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; font-size: 13px;
+    display: flex; align-items: center; gap: 10px;
+    color: var(--text-dim); transition: all .2s;
+  }
+  .step .num {
+    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    display: grid; place-items: center; font-weight: 700; font-size: 12px;
+    background: var(--border); color: var(--text-dim);
+  }
+  .step.active { border-color: var(--accent); color: var(--text); }
+  .step.active .num { background: var(--accent); color: #04121f; }
+  .step.done { border-color: var(--ok); color: var(--text); }
+  .step.done .num { background: var(--ok); color: #04121f; }
+  .step.error { border-color: var(--err); color: var(--text); }
+  .step.error .num { background: var(--err); color: #fff; }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%; animation: spin .7s linear infinite; display: none;
+  }
+  .step.active .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* status */
+  #status { margin-top: 16px; font-size: 14px; }
+  .msg { padding: 12px 14px; border-radius: 10px; font-size: 14px; }
+  .msg.ok { background: rgba(34,197,94,.12); color: #86efac; border: 1px solid rgba(34,197,94,.35); }
+  .msg.err { background: rgba(239,68,68,.12); color: #fca5a5; border: 1px solid rgba(239,68,68,.35); }
+  .msg.info { background: rgba(56,189,248,.1); color: #bae6fd; border: 1px solid rgba(56,189,248,.3); }
+  .msg code { background: rgba(0,0,0,.3); padding: 1px 6px; border-radius: 4px; }
+
+  /* code chip */
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 10px; font-family: ui-monospace, monospace; font-size: 13px;
+  }
+
+  /* results */
+  #results { display: none; margin-top: 22px; }
+  .domain-group {
+    background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 14px;
+  }
+  .domain-title { font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .region-label { color: var(--text-dim); font-size: 13px; font-weight: 600; margin: 10px 0 6px; }
+  .link-box {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
+  }
+  .link-box .tag { font-size: 11px; color: var(--text-dim); width: 78px; flex-shrink: 0; }
+  .link-box a {
+    flex: 1; color: var(--accent); text-decoration: none; font-family: ui-monospace, monospace;
+    font-size: 12.5px; word-break: break-all; overflow: hidden; text-overflow: ellipsis;
+  }
+  .link-box a:hover { text-decoration: underline; }
+  .copied { color: var(--ok) !important; border-color: var(--ok) !important; }
+
+  /* debug */
+  #debugToggle { margin-top: 18px; }
+  #debug { display: none; margin-top: 12px; }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; overflow-x: auto; font-size: 12.5px; color: #cbd5e1;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; margin: 8px 0;
+  }
+  pre .k { color: #7dd3fc; }
+  pre .s { color: #86efac; }
+
+  .note {
+    margin-top: 22px; font-size: 12.5px; color: var(--text-dim);
+    border-top: 1px solid var(--border); padding-top: 14px;
+  }
+  .note b { color: var(--warn); }
+  footer { text-align: center; color: var(--text-dim); font-size: 12px; margin-top: 28px; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 560px) {
+    .input-row { flex-direction: column; }
+    .btn-primary { width: 100%; }
+    .step { min-width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo"><span class="badge">🔑</span> 1Password 学生优惠激活链接生成器</div>
+      <div class="subtitle">粘贴 GitHub Student 授权后的跳转 URL，一键生成激活链接</div>
+    </header>
+
+    <div class="card">
+      <label for="urlInput">完整的跳转 URL</label>
+      <div class="input-row">
+        <textarea id="urlInput" placeholder="https://1password.com/developers/students/complete?code=xxxxxxxx&state=xxxxxxxx" spellcheck="false"></textarea>
+      </div>
+      <div class="input-row" style="margin-top:12px">
+        <button class="btn-primary" id="genBtn" onclick="generate()">生成激活链接</button>
+        <button class="btn-ghost" onclick="pasteFromClipboard()">📋 粘贴</button>
+        <button class="btn-ghost" onclick="clearAll()">清空</button>
+      </div>
+
+      <div class="steps">
+        <div class="step" id="step1"><span class="num">1</span><span class="spinner"></span><span>提取 Code</span></div>
+        <div class="step" id="step2"><span class="num">2</span><span class="spinner"></span><span>获取 Student Token</span></div>
+        <div class="step" id="step3"><span class="num">3</span><span class="spinner"></span><span>获取 Activation Token</span></div>
+      </div>
+
+      <div id="status"></div>
+
+      <div id="results"></div>
+
+      <button class="btn-ghost" id="debugToggle" onclick="toggleDebug()" style="display:none">查看原始返回数据</button>
+      <div id="debug"></div>
+
+      <div class="note">
+        <b>提示：</b>授权 code 通常<b>单次使用且时效很短</b>（几分钟内过期）。请从 GitHub Student 授权流程拿到跳转 URL 后<b>立即</b>粘贴生成。<br>
+        若请求失败提示 CORS / 网络错误，说明该接口不支持浏览器跨域调用，请在 Node.js 环境下运行原始脚本。
+      </div>
+    </div>
+
+    <footer>
+      开源项目：<a href="https://github.com/handsomezhuzhu/1password_students" target="_blank" rel="noopener">handsomezhuzhu/1password_students</a>
+      · 纯前端实现，无后端服务器
+    </footer>
+  </div>
+
+<script>
+const API_BASE = "https://start.b5dev.eu";
+const $ = (id) => document.getElementById(id);
+
+function setMsg(type, html) {
+  const s = $("status");
+  if (!html) { s.innerHTML = ""; return; }
+  s.innerHTML = `<div class="msg ${type}">${html}</div>`;
+}
+
+function setStep(id, state) {
+  const el = $(id);
+  el.classList.remove("active", "done", "error");
+  if (state) el.classList.add(state);
+}
+
+function resetSteps() {
+  setStep("step1", null); setStep("step2", null); setStep("step3", null);
+}
+
+function clearAll() {
+  $("urlInput").value = "";
+  setMsg(null);
+  $("results").style.display = "none";
+  $("results").innerHTML = "";
+  $("debug").innerHTML = "";
+  $("debugToggle").style.display = "none";
+  $("debug").style.display = "none";
+  resetSteps();
+}
+
+async function pasteFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) { $("urlInput").value = text.trim(); $("urlInput").focus(); }
+    else setMsg("info", "剪贴板为空。");
+  } catch (e) {
+    setMsg("err", "无法读取剪贴板，请手动粘贴。");
+  }
+}
+
+function extractCode(input) {
+  const text = (input || "").trim();
+  if (!text) return "";
+  try {
+    const urlObj = new URL(text);
+    const c = urlObj.searchParams.get("code");
+    if (c) return c;
+  } catch (e) { /* not a full url */ }
+  const match = text.match(/[?&]code=([a-zA-Z0-9]+)/);
+  if (match) return match[1];
+  // 兜底：若用户直接粘贴纯 code
+  if (/^[a-zA-Z0-9]{8,}$/.test(text)) return text;
+  return "";
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+function highlightJson(obj) {
+  try {
+    let json = JSON.stringify(obj, null, 2);
+    json = escapeHtml(json);
+    json = json.replace(/&quot;([^&]*?)&quot;(\s*):/g, '<span class="k">&quot;$1&quot;</span>$2:');
+    json = json.replace(/: &quot;(.*?)&quot;/g, ': <span class="s">&quot;$1&quot;</span>');
+    return json;
+  } catch (e) {
+    return escapeHtml(String(obj));
+  }
+}
+
+function toggleDebug() {
+  const d = $("debug");
+  d.style.display = (d.style.display === "none") ? "block" : "none";
+}
+
+function showDebug(data1, data2) {
+  $("debug").innerHTML =
+    `<div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">[2/3] Student Token 接口返回：</div>
+     <pre>${highlightJson(data1)}</pre>
+     <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px">[3/3] Activation Token 接口返回：</div>
+     <pre>${highlightJson(data2 || {})}</pre>`;
+  $("debugToggle").style.display = "inline-block";
+}
+
+function renderLinks(actToken) {
+  const groups = [
+    {
+      title: "🅱️ b5dev 域",
+      regions: [
+        { label: "全球", signup: `https://start.b5dev.com/sign-up?c=${actToken}`, login: `https://start.b5dev.com/partnership/link?c=${actToken}` },
+        { label: "欧洲", signup: `https://start.b5dev.eu/sign-up?c=${actToken}`, login: `https://start.b5dev.eu/partnership/link?c=${actToken}` },
+      ]
+    },
+    {
+      title: "🔐 1password 域",
+      regions: [
+        { label: "全球", signup: `https://start.1password.com/sign-up?c=${actToken}`, login: `https://start.1password.com/partnership/link?c=${actToken}` },
+        { label: "欧洲", signup: `https://start.1password.eu/sign-up?c=${actToken}`, login: `https://start.1password.eu/partnership/link?c=${actToken}` },
+      ]
+    },
+  ];
+
+  let html = "";
+  for (const g of groups) {
+    html += `<div class="domain-group"><div class="domain-title">${g.title}</div>`;
+    for (const r of g.regions) {
+      html += `<div class="region-label">${r.label}</div>`;
+      html += linkRow("新用户注册", r.signup);
+      html += linkRow("老用户登录", r.login);
+    }
+    html += `</div>`;
+  }
+  $("results").innerHTML = html;
+  $("results").style.display = "block";
+}
+
+function linkRow(tag, url) {
+  const id = "lnk_" + Math.random().toString(36).slice(2, 9);
+  return `<div class="link-box" id="${id}">
+    <span class="tag">${tag}</span>
+    <a href="${url}" target="_blank" rel="noopener" title="${url}">${url}</a>
+    <button class="btn-copy" onclick="copyLink('${url}','${id}')">复制</button>
+  </div>`;
+}
+
+async function copyLink(url, boxId) {
+  try {
+    await navigator.clipboard.writeText(url);
+    const btn = document.querySelector(`#${boxId} .btn-copy`);
+    const orig = btn.textContent;
+    btn.textContent = "已复制 ✓";
+    btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove("copied"); }, 1500);
+  } catch (e) {
+    // fallback
+    const ta = document.createElement("textarea");
+    ta.value = url; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (_) {}
+    document.body.removeChild(ta);
+  }
+}
+
+async function generate() {
+  const btn = $("genBtn");
+  btn.disabled = true;
+  $("results").style.display = "none";
+  $("results").innerHTML = "";
+  $("debug").innerHTML = "";
+  $("debugToggle").style.display = "none";
+  $("debug").style.display = "none";
+  resetSteps();
+  setMsg(null);
+
+  const input = $("urlInput").value;
+  let data1 = null, data2 = null;
+
+  try {
+    // 第一步：提取 Code
+    setStep("step1", "active");
+    const code = extractCode(input);
+    if (!code) { setStep("step1", "error"); throw new Error("未能从输入中识别到 code。"); }
+    setStep("step1", "done");
+    setMsg("info", `[1/3] 提取到 Code：<span class="chip">${escapeHtml(code)}</span>`);
+
+    // 第二步：获取 Student Token
+    setStep("step2", "active");
+    setMsg("info", `[2/3] 正在请求 Student Token...`);
+    let res1;
+    try {
+      res1 = await fetch(`${API_BASE}/api/v3/github-student/${encodeURIComponent(code)}`);
+    } catch (netErr) {
+      setStep("step2", "error");
+      throw new Error("网络请求失败（可能是 CORS 跨域被浏览器拦截）。错误：" + netErr.message);
+    }
+    data1 = await res1.json().catch(() => ({}));
+    showDebug(data1, null);
+    if (!res1.ok || !data1.studentToken) {
+      setStep("step2", "error");
+      throw new Error(`获取 Student Token 失败 (HTTP ${res1.status})。返回：${JSON.stringify(data1)}`);
+    }
+    setStep("step2", "done");
+    setMsg("info", `[2/3] 已获取 Student Token ✓`);
+
+    // 第三步：获取 Activation Token
+    setStep("step3", "active");
+    setMsg("info", `[3/3] 正在请求 Activation Token...`);
+    let res2;
+    try {
+      res2 = await fetch(`${API_BASE}/api/v3/github-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentToken: data1.studentToken, domain: "1password.com" })
+      });
+    } catch (netErr) {
+      setStep("step3", "error");
+      throw new Error("网络请求失败（可能是 CORS 跨域被浏览器拦截）。错误：" + netErr.message);
+    }
+    data2 = await res2.json().catch(() => ({}));
+    showDebug(data1, data2);
+    if (!res2.ok || !data2.activationToken) {
+      setStep("step3", "error");
+      throw new Error(`激活失败 (HTTP ${res2.status})。返回：${JSON.stringify(data2)}`);
+    }
+    setStep("step3", "done");
+
+    const actToken = data2.activationToken;
+    renderLinks(actToken);
+    setMsg("ok", `🎉 流程全部成功！下方为激活链接（点击「复制」即可）。`);
+  } catch (err) {
+    setMsg("err", `❌ <b>致命错误：</b> ${escapeHtml(err.message)}`);
+    showDebug(data1 || {}, data2 || {});
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 回车快捷键
+$("urlInput").addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") generate();
+});
+</script>
+</body>
+</html>
