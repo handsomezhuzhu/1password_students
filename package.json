@@ -1,0 +1,13 @@
+{
+  "name": "1password-students",
+  "version": "1.0.0",
+  "private": true,
+  "description": "1Password student activation link generator.",
+  "scripts": {
+    "start": "node scripts/activate.js",
+    "activate": "node scripts/activate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

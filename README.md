@@ -11,6 +11,42 @@
 
 直接打开 `index.html` 即可，无需后端服务器。
 
+如果网页提示 CORS / 网络错误，请改用 Node.js 方式运行。浏览器会限制跨域请求，但 Node.js 不受浏览器 CORS 限制。
+
+### Node.js 本机运行
+
+要求 Node.js 18 或更高版本。
+
+```powershell
+node -v
+```
+
+如果没有安装 Node.js，可在 Windows 上用：
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+```
+
+运行方式一：启动后粘贴 URL。
+
+```powershell
+git clone https://github.com/handsomezhuzhu/1password_students.git
+cd 1password_students
+npm run activate
+```
+
+运行方式二：直接把 URL 作为参数传入。
+
+```powershell
+npm run activate -- "https://1password.com/developers/students/complete?code=你的code&state=你的state"
+```
+
+也可以不用 npm：
+
+```powershell
+node scripts/activate.js "https://1password.com/developers/students/complete?code=你的code&state=你的state"
+```
+
 ## 使用步骤
 
 1. 完成 GitHub Student Developer Pack 中 1Password 的授权流程。
